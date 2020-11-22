@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks.Dataflow;
+using TestsGenerator;
 
 namespace ConsoleApp
 {
@@ -13,8 +14,14 @@ namespace ConsoleApp
         private const string destPath = "D:\\5sem\\spp\\lab4\\";
         private static readonly string[] filesPathes =
         {
-            ""
+            "D:\\5sem\\spp\\SppLab1\\SppLab1\\SppLab1\\Tracer.cs",
+            "D:\\5sem\\spp\\SppLab1\\SppLab1\\SppLab1\\ThreadTracer.cs",
+            "D:\\5sem\\spp\\SppLab1\\SppLab1\\SppLab1\\MethodTracer.cs",
+            "D:\\5sem\\spp\\lab4\\SppLab4\\Classes\\1.cs",
+            "D:\\5sem\\spp\\lab4\\SppLab4\\Classes\\no_methods.cs",
+            "D:\\5sem\\spp\\lab4\\SppLab4\\Classes\\valid.cs"
         };
+
         static void Main()
         {
             var loadSourceFiles = new TransformBlock<string, string>(async path =>
@@ -29,11 +36,11 @@ namespace ConsoleApp
                 MaxDegreeOfParallelism = maxFilesToLoad
             });
 
-            var generateTestClasses = new TransformManyBlock<string, T>(async source =>
+            var generateTestClasses = new TransformBlock<string, TestGenerator.Test>(async source =>
             {
                 Console.WriteLine("Generating test classes ...");
-                // TODO generate test classes
-                
+                var generator = new TestGenerator();
+                return await generator.GetTests(source);
             },
             new ExecutionDataflowBlockOptions
             {
@@ -41,12 +48,12 @@ namespace ConsoleApp
             });
 
 
-            var writeToFile = new ActionBlock<T>(async testClass =>
+            var writeToFile = new ActionBlock<TestGenerator.Test>(async testClass =>
             {
-                Console.WriteLine("Writing {0} to file...", testClass.Name);
+                Console.WriteLine("Writing {0} to file...", testClass.fileName);
 
-                using StreamWriter writer = File.CreateText(destPath);
-                await writer.WriteAsync(testClass.value);
+                using StreamWriter writer = File.CreateText(destPath + testClass.fileName);
+                await writer.WriteAsync(testClass.code);
             },
             new ExecutionDataflowBlockOptions
             {
@@ -62,7 +69,7 @@ namespace ConsoleApp
             {
                 loadSourceFiles.Post(item);
             }
-            
+
             // Mark the head of the pipeline as complete.
             loadSourceFiles.Complete();
 
